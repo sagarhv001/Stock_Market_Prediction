@@ -129,92 +129,171 @@ user_agent = os.getenv("REDDIT_USER_AGENT")
 ```
 
 ---
+##Documentation on each jupyter notebook
+Telegram/Reddit.ipynb
+Overview
+This script:
+Scrapes posts and comments from a specified subreddit (e.g., IndianStockMarket) using Reddit's API.
+Analyzes the sentiment of post titles and comments using VADER and TextBlob sentiment analysis tools.
+Identifies mentions of a specific stock ticker in posts/comments and counts them.
+Fetches historical stock price data for the specified ticker from Yahoo Finance and saves it to a CSV.
 
-## 🏆 **How to Run**
+Dependencies
+Libraries
+Install the required libraries before running the code:
+pip install asyncpraw praw
+pip install --upgrade pip
+pip install yfinance --no-dependencies
+pip install multitasking --no-dependencies
 
-### 1. **Run the Scraper & Sentiment Analysis**:
-```python
-# Initialize Reddit connection & fetch comments
-from scraper import fetch_reddit_data
-fetch_reddit_data()
-```
+Python Libraries Used
+Reddit API:
+praw: For connecting to and scraping data from Reddit.
+asyncpraw: Asynchronous version of praw for efficiency.
+Finance API:
+yfinance: To fetch historical stock price data.
+Data Manipulation and Visualization:
+pandas: For data cleaning and DataFrame manipulation.
+numpy: For numerical operations.
+Sentiment Analysis:
+nltk: Includes VADER sentiment analyzer.
+textblob: For polarity-based sentiment scoring.
+Others:
+datetime: To handle date formats.
+time: For handling time delays in API requests.
 
----
+Setting Up
+1. Configure Reddit API Credentials
+Before running the script, set up Reddit API credentials:
+Visit the Reddit Apps page.
+Create an app (type: script) and note down:
+client_id
+client_secret
+user_agent
+Store these credentials in the Colab or your local environment using:
+ from google.colab import userdata
+c_id = userdata.get('client_id')
+c_secret = userdata.get('client_secret')
+u_agent = userdata.get('user_agent')
 
-### 2. **Fetch & Process Stock Data**:
-```python
-from stock_fetcher import fetch_stock_history
-fetch_stock_history(ticker="ZOMATO.NS")
-```
 
----
+2. Set the Stock Ticker
+Define the stock ticker symbol you want to analyze:
+STS = "ZOMATO.NS"  # Example: ZOMATO for NSE
 
-### 3. **Train the Prediction Model**:
-```python
-from model import train_cnn_model
-train_cnn_model()
-```
+3. Run in Colab or Jupyter Notebook
+To execute:
+Upload the script to Google Colab or run it in your local Jupyter environment.
 
----
+Code Walkthrough
+1. Sentiment Analysis on Reddit
+Purpose
+Analyze sentiment in posts and comments mentioning a specific stock ticker.
+Steps
+Initialize Reddit Connection:
 
-## 📊 **Model Training & Evaluation**
+ reddit = praw.Reddit(client_id=c_id, client_secret=c_secret, user_agent=u_agent)
+subreddit = reddit.subreddit("IndianStockMarket")
 
-The CNN model is trained on sentiment analysis scores and historical stock data:
 
-### Steps:
-1. Preprocess and prepare data (`merged_data_all.csv`).
-2. Split data into train/test sets.
-3. Train CNN:
-   - `Conv1D`, `Dropout`, `Dense` layers.
-4. Evaluate model accuracy with metrics like:
-   - **Precision**
-   - **Recall**
-   - **F1-Score**
+Fetch Posts: Fetch all "top" posts from the specified subreddit:
 
----
+ top_posts = reddit.subreddit("IndianStockMarket").top(limit=None)
 
-## 🔮 **Outputs & Expected Results**
 
-### CSV Outputs:
-1. `comment_analysis_<ticker>.csv`: Sentiment data extracted and analyzed.
-2. `stockhistory_<ticker>.csv`: Historical stock price data.
-3. `merged_data_<ticker>.csv`: Combined sentiment & stock data.
-4. `merged_data_all.csv`: Consolidated data of all analyzed tickers.
+Sentiment Analysis Functions:
 
-### Model Outputs:
-- Training history graphs (loss vs. accuracy).
-- Evaluation results with confusion matrices.
 
----
+TextBlob: Analyzes polarity (positive, neutral, or negative) based on text sentiment.
+ def text_blob_sentiment(review, sub_entries_textblob):
+    analysis = TextBlob(review)
+    if analysis.sentiment.polarity > 0:
+        sub_entries_textblob['positive'] += 1
+    elif analysis.sentiment.polarity < 0:
+        sub_entries_textblob['negative'] += 1
+    else:
+        sub_entries_textblob['neutral'] += 1
 
-## 🚀 **Future Improvements**
 
-1. **Real-Time Scraping**: Integrate with periodic data scrapers for live data analysis.
-2. **Add Twitter or Telegram sentiment analysis**.
-3. **Explore other models**: Compare CNN with other models like LSTMs or Gradient Boosting.
+VADER: Determines sentiment using VADER's lexicon-based approach:
+ def nltk_sentiment(review, sub_entries_nltk):
+    vs = sia.polarity_scores(review)
+    if vs['pos'] > vs['neg']:
+        sub_entries_nltk['positive'] += 1
+    elif vs['neg'] > vs['pos']:
+        sub_entries_nltk['negative'] += 1
+    else:
+        sub_entries_nltk['neutral'] += 1
 
----
 
-## 🐛 **Debugging Tips**
+Count Stock Mentions: Searches for the stock ticker symbol (STS) in comments/posts:
 
-### Missing Data?
-- Double-check ticker symbols (e.g., `ZOMATO.NS`) and ensure correct stock exchange codes.
+ if comment.body.find(STS) != -1:
+    STSC += 1
 
-### Model Not Training Correctly?
-- Ensure data is preprocessed properly using StandardScaler normalization.
 
----
+Save Results: Stores sentiment data and stock mentions in a CSV:
 
-## 🏆 **Contribute**
+ commentDF.to_csv(f'comment_analysis_{STS}.csv', index=False, header=True)
 
-We welcome contributions! If you have improvements, fix a bug, or can add documentation, feel free to submit a pull request.
 
----
 
-📧 For inquiries or collaboration: **your.email@example.com**
+2. Fetch Stock Price Data from Yahoo Finance
+Purpose
+Retrieve historical stock data for the specified ticker.
+Steps
+Fetch Data: Using yfinance:
 
-🔗 Repository maintained by: [Your GitHub username]
+ selectedTicker = yf.Ticker(ticker)
+hist = selectedTicker.history(period="max")
+Select the company you want the historic data of and enter its symbol here.
+Do this for all the companies you need, if you want the NIFTY 50 index, use its symbol.
+Save Data: Saves stock history as a CSV:
 
----
+ hist.to_csv(f'stockhistory_{ticker}.csv', index=True, header=True)
 
-Thank you for checking out this project! 🚀
+
+How to Run the Script
+Sentiment Analysis:
+	
+Run all the cells using Ctrl + F9 first to prime the sentiment analysing cells and install all the dependencies
+Run the main() function:
+if __name__ == '__main__':
+    main()
+
+
+Output:
+Prints sentiment counts for each post.
+Saves sentiment and ticker mention data in comment_analysis_<ticker>.csv.
+Stock Price Analysis:
+
+
+Call fetch_and_save_stock_history_with_pcr():
+fetch_and_save_stock_history_with_pcr(STS)
+
+
+Output:
+Saves historical stock price data in stockhistory_<ticker>.csv.
+
+Outputs
+Sentiment Analysis CSV: Contains:
+
+
+Title: Post title
+Ticker: Stock ticker analyzed
+Date: Post date
+NumberOfTickerMentions: Count of mentions in comments
+Sentiment values: VADER Neg, VADER Pos, TextBlob Negative, etc.
+Stock History CSV: Contains:
+
+
+Date, Open, Close, High, Low, Volume
+
+Future Improvements
+Real-Time Scraping: Automate periodic scraping of Reddit posts and Yahoo Finance data.
+Additional Sentiment Sources: Include Twitter, Telegram, or Discord sentiment.
+Advanced Analytics:
+Correlate stock price movements with sentiment trends.
+Use predictive models for price forecasting.
+Collect PCR along with other stock data as PCR is more accurate metric to predict stock movement.
+
